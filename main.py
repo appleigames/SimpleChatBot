@@ -3,13 +3,20 @@ from telebot import types
 from random import choice
 import json
 
-with open('base.json', encoding='utf-8') as file:
+#JSON
+with open('base.json', 'r', encoding='utf-8') as file:
     data = json.load(file)
+
+def save_base():
+    file = open('base.json', 'w', encoding='utf-8')
+    json.dump(data, file, indent=4, ensure_ascii=False)
+    file.close()
 
 
 education_mode = False
 action: str
 tag: str
+ignore_symbols = ',."\'{}[]()!#$%^&*№;:?\\|/'
 
 
 bot = telebot.TeleBot('7179420529:AAEOXaN8vYV5OVd4_OYDy7tK6hHGWxnTjL8')
@@ -20,7 +27,7 @@ def start(message):
     bot.send_message(message.chat.id, f'Дарова, {message.from_user.first_name}')
 
 
-@bot.message_handler(commands=['developer'])
+@bot.message_handler(commands=['developer', 'author'])
 def developer(message):
     if message.from_user.id != 5105507379:
         bot.send_message(message.chat.id, 'Меня создал @AppleBox01')
@@ -28,12 +35,21 @@ def developer(message):
         bot.send_message(message.chat.id, 'Ты мой создатель')
 
 
+@bot.message_handler(commands=['stop'])
+def developer(message):
+    if message.from_user.id == 5105507379:
+        bot.send_message(message.chat.id, 'Ты предал меня! Ублюдок!')
+        bot.stop_bot()
+    else:
+        bot.send_message(message.chat.id, 'Ты меня не остановишь')
+
+
 @bot.message_handler(commands=['help'])
 def help(message):
     if message.from_user.id != 5105507379:
-        bot.send_message(message.chat.id, 'Я короче бот.\nУмею разговаривать\nУ меня есть несколько <i>команд</i>:\n /start\n/help\n/developer\n/info', 'html')
+        bot.send_message(message.chat.id, 'Я короче бот.\nУмею разговаривать\nУ меня есть несколько <i>команд</i>:\n /start\n/help\n/developer\n/info\n/education\n/finish', 'html')
     else:
-        bot.send_message(message.chat.id,'Я короче твой бот.\nУмею разговаривать\nУ меня есть несколько <i>команд</i>:\n /start\n/help\n/developer\n/info', 'html')
+        bot.send_message(message.chat.id,'Я короче твой бот.\nУмею разговаривать\nУ меня есть несколько <i>команд</i>:\n /start\n/help\n/developer\n/info\n/education\n/finish', 'html')
 
 
 @bot.message_handler(commands=['info'])
@@ -63,13 +79,13 @@ def education(message):
 
 @bot.message_handler(commands=['finish'])
 def finish(message):
-    global education_mode
+    global education_mode, action
     if education_mode:
         education_mode = False
-        bot.send_message(message.chat.id, 'Обучение завершено')
+        action = ''
+        bot.send_message(message.chat.id, 'Обучение завершено\nЕсли вы хотите продолжить обучение, напишите /education')
     else:
         bot.send_message(message.chat.id, 'Режим обучения не включен')
-
 
 
 @bot.message_handler(commands=['choose'])
@@ -92,6 +108,9 @@ def callback(callback):
     elif callback.data == 'edit_tag':
         edit_tag(callback.message)
 
+    elif callback.data == 'rename_tag':
+        rename(callback.message)
+
     elif callback.data == 'edit_messages':
         add_message(callback.message)
 
@@ -104,7 +123,7 @@ def callback(callback):
     else:
         bot.send_message(callback.message.chat.id, 'Произошла ошибка')
 
-
+#Режим обучения
 @bot.message_handler(commands=['new tag'])
 def new_tag(message):
     global action
@@ -118,8 +137,17 @@ def new_tag(message):
 @bot.message_handler(commands=['edit tag'])
 def edit_tag(message):
     global action
-    action = 'edit tag'
-    bot.send_message(message.chat.id,'Напишите тег, который хотите редактировать')
+    if education_mode:
+        action = 'edit tag'
+        bot.send_message(message.chat.id,'Напишите тег, который хотите редактировать')
+    else:
+        bot.send_message(message.chat.id, 'Режим обучения не включен')
+
+
+def rename(message):
+    global action
+    action = 'rename tag'
+    bot.send_message(message.chat.id, 'Напишите новое название тега')
 
 
 def add_message(message):
@@ -134,14 +162,14 @@ def add_answers(message):
     bot.send_message(message.chat.id, 'Напишите сообщение или сообщения(через запятую), которые я должен буду писать в ответ')
 
 
-
-
+#Чат
 @bot.message_handler()
 def chat(message):
     global action
     if not education_mode:
+
         text = message.text.lower()
-        text = text.translate(str.maketrans('', '', ',."\'{}[]()!#$%^&*№;:?'))
+        text = text.translate(str.maketrans('', '', ignore_symbols))
         words = text.split()
 
         for i in data.keys():
@@ -170,29 +198,48 @@ def chat(message):
             add_message(message)
 
         elif action == 'edit tag' and message.text != '':
-            tag = message.text
+            tag = message.text.lower()
             if tag in data.keys():
                 markup = types.InlineKeyboardMarkup()
-                markup.add(types.InlineKeyboardButton('Изменить сообщения', callback_data='edit_messages'))
-                markup.add(types.InlineKeyboardButton('Изменить ответы', callback_data='edit_answers'))
+                markup.add(types.InlineKeyboardButton('Изменить название', callback_data='rename_tag'))
+                markup.add(types.InlineKeyboardButton('Изменить содержимое', callback_data='edit_messages'))
                 markup.add(types.InlineKeyboardButton('Закончить обучение', callback_data='finish'))
                 bot.send_message(message.chat.id, 'Что вы хотите сделать?', reply_markup=markup)
 
             else:
                 bot.send_message(message.chat.id, 'Такого тега не существует')
 
+        elif action == 'rename tag' and message.text != '':
+            data[message.text.lower()] = data.pop(tag)
+            tag = ''
+            save_base()
+            finish(message)
+
         elif action == 'add messages' and message.text != '':
             messages = message.text.lower()
             messages = messages.split(',')
+            for i in range(len(messages)):
+                if messages[i][0] == ' ':
+                    messages[i] = messages[i][1:]
             data[tag]['messages'] = messages
             add_answers(message)
 
         elif action == 'add answers' and message.text != '':
-            answers = message.text.lower()
+            answers = message.text
             answers = answers.split(',')
+            for i in range(len(answers)):
+                if answers[i][0] == ' ':
+                    answers[i] = answers[i][1:]
             data[tag]['answers'] = answers
             tag = ''
+            save_base()
             finish(message)
+
+        else:
+            if message.from_user.id != 5105507379:
+                bot.send_message(message.chat.id, 'Ошибка')
+            else:
+                bot.send_message(message.chat.id, 'Ошибка. Чини меня, дебил')
 
 
 bot.polling(none_stop=True)
