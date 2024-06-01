@@ -14,6 +14,7 @@ def save_base():
 
 
 education_mode = False
+math_mode = False
 action: str
 tag: str
 ignore_symbols = ',."\'{}[]()!#$%^&*№;:?\\|/'
@@ -66,26 +67,50 @@ def info(message):
                           f'Бот поддерживает встроенные запросы: {message.from_user.supports_inline_queries}\n')
 
 
+@bot.message_handler(commands=['math'])
+def math(message):
+    global math_mode
+    if not education_mode:
+        if not math_mode:
+            math_mode = True
+            bot.send_message(message.chat.id, 'Отправьте мне математическое выражение, я решу его... Наверное')
+        else:
+            bot.send_message(message.chat.id, 'Вы уже в режиме математики')
+    else:
+        bot.send_message(message.chat.id, 'Вы в режиме обучения')
+
+
 @bot.message_handler(commands=['education'])
 def education(message):
     global education_mode
-    if not education_mode:
-        education_mode = True
-        bot.send_message(message.chat.id, 'Обучение начато')
-        bot.send_message(message.chat.id, 'Напишите "/choose"')
+    if not math_mode:
+        if not education_mode:
+            education_mode = True
+            bot.send_message(message.chat.id, 'Обучение начато')
+            bot.send_message(message.chat.id, 'Напишите "/choose"')
+        else:
+            bot.send_message(message.chat.id, 'Обучение уже начато')
     else:
-        bot.send_message(message.chat.id, 'Обучение уже начато')
+        bot.send_message(message.chat.id, 'Вы в режиме математики')
 
 
 @bot.message_handler(commands=['finish'])
 def finish(message):
-    global education_mode, action
+    global education_mode, action, math_mode
     if education_mode:
         education_mode = False
         action = ''
         bot.send_message(message.chat.id, 'Обучение завершено\nЕсли вы хотите продолжить обучение, напишите /education')
+
+    elif math_mode:
+        math_mode = False
+        bot.send_message(message.chat.id, 'Вы вышли из режима математики')
+
     else:
-        bot.send_message(message.chat.id, 'Режим обучения не включен')
+        if message.from_user.id != 5105507379:
+            bot.send_message(message.chat.id, 'Вы не вошли ни в один из режимов')
+        else:
+            bot.send_message(message.chat.id, 'Сначала войди в какой-нибудь режим, идиот!')
 
 
 @bot.message_handler(commands=['choose'])
@@ -122,6 +147,7 @@ def callback(callback):
 
     else:
         bot.send_message(callback.message.chat.id, 'Произошла ошибка')
+
 
 #Режим обучения
 @bot.message_handler(commands=['new tag'])
@@ -166,7 +192,7 @@ def add_answers(message):
 @bot.message_handler()
 def chat(message):
     global action
-    if not education_mode:
+    if not education_mode and not math_mode:
 
         text = message.text.lower()
         text = text.translate(str.maketrans('', '', ignore_symbols))
@@ -190,7 +216,8 @@ def chat(message):
 
                     break
 
-    else:
+
+    elif education_mode:
         global tag
         if action == 'new tag' and message.text != '':
             tag = message.text
@@ -210,7 +237,8 @@ def chat(message):
                 bot.send_message(message.chat.id, 'Такого тега не существует')
 
         elif action == 'rename tag' and message.text != '':
-            data[message.text.lower()] = data.pop(tag)
+            new_tag = message.text.lower()
+            data[new_tag] = data.pop(tag)
             tag = ''
             save_base()
             finish(message)
@@ -240,6 +268,13 @@ def chat(message):
                 bot.send_message(message.chat.id, 'Ошибка')
             else:
                 bot.send_message(message.chat.id, 'Ошибка. Чини меня, дебил')
+
+
+    elif math_mode:
+        if message.text != '/finish':
+            math_exp = eval(message.text)
+            bot.send_message(message.chat.id, math_exp)
+            finish(message)
 
 
 bot.polling(none_stop=True)
