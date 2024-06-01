@@ -179,13 +179,13 @@ def rename(message):
 def add_message(message):
     global action
     action = 'add messages'
-    bot.send_message(message.chat.id, 'Напишите сообщение или сообщения(через запятую), на которые я должен буду давать ответ')
+    bot.send_message(message.chat.id, 'Напишите сообщение или сообщения(через точку с запятой), на которые я должен буду давать ответ')
 
 
 def add_answers(message):
     global action
     action = 'add answers'
-    bot.send_message(message.chat.id, 'Напишите сообщение или сообщения(через запятую), которые я должен буду писать в ответ')
+    bot.send_message(message.chat.id, 'Напишите сообщение или сообщения(через точку с запятой), которые я должен буду писать в ответ')
 
 
 #Чат
@@ -245,7 +245,7 @@ def chat(message):
 
         elif action == 'add messages' and message.text != '':
             messages = message.text.lower()
-            messages = messages.split(',')
+            messages = messages.split(';')
             for i in range(len(messages)):
                 if messages[i][0] == ' ':
                     messages[i] = messages[i][1:]
@@ -254,7 +254,7 @@ def chat(message):
 
         elif action == 'add answers' and message.text != '':
             answers = message.text
-            answers = answers.split(',')
+            answers = answers.split(';')
             for i in range(len(answers)):
                 if answers[i][0] == ' ':
                     answers[i] = answers[i][1:]
